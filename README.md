@@ -4,28 +4,52 @@ This repository contains the smart contracts for the UnichainFrens project, a un
 
 ## Overview
 
-UnichainFrens is a dynamic NFT staking system where:
+UnichainFrens is a dynamic NFT ecosystem where Unifrens compete in an economic game:
 - Users can mint positions with customizable names and weights
 - Positions accumulate rewards based on their weight and time staked
-- Users can perform different types of withdrawals:
-  - Soft withdraw (25% of rewards)
-  - Hard withdraw (75% of rewards)
-  - Redistribute (increase weight instead of claiming)
+- Earlier positions earn more through a square root decay formula
+- Players compete to be the last active position
+
+## Core Strategies
+
+1. **Stay & Play**
+   - Soft withdraw (25% of rewards)
+   - Redistribute 75% back to the pool
+   - Maintain position for future earnings
+
+2. **Power-Up**
+   - Convert rewards to weight increase
+   - Maximum weight of 1000×
+   - No ETH withdrawal
+
+3. **Cash Out**
+   - Hard withdraw (75% of rewards)
+   - Redistribute 25% back to pool
+   - Position becomes inactive (weight = 0)
+
+## Victory Condition
+
+When only one active Fren remains (all others have weight 0), that player can claim victory and receive the entire contract balance as the ultimate winner of the game.
 
 ## Contract Versions
 
 - `v1.sol` - Initial implementation
 - `v2.sol` - Enhanced version with improved mechanics
-- `v3.sol` - Latest version with optimizations
+- `v3.sol` - Gas optimizations and bug fixes
+- `v4.sol` - Changed to square root decay for more balanced distribution
+- `v5.sol` - Added victory mechanics and standardized error handling
 
 See [DEPLOYMENT_HISTORY.md](./DEPLOYMENT_HISTORY.md) for contract addresses and deployment details.
 
 ## Key Features
 
 - Dynamic weight system (1-100 initial, up to 1000 max)
+- Square root decay distribution (1/√position)
 - Customizable position names
 - Multiple withdrawal strategies
-- Fair reward distribution based on weight and time
+- Victory claim mechanic
+- Emergency pause functionality
+- Standardized error messages
 - Gas-optimized implementations
 
 ## Events
@@ -40,6 +64,25 @@ event PositionMinted(uint256 indexed tokenId, uint256 weight, string name, addre
 Emitted when rewards are claimed
 ```solidity
 event RewardsClaimed(uint256 indexed tokenId, uint256 amount, uint8 withdrawalType)
+// withdrawalType: 0=soft, 1=hard, 2=redistribute, 3=victory
+```
+
+### WeightUpdated
+Emitted when a position's weight changes
+```solidity
+event WeightUpdated(uint256 indexed tokenId, uint256 oldWeight, uint256 newWeight)
+```
+
+### GlobalRewardsUpdated
+Emitted when global rewards are updated
+```solidity
+event GlobalRewardsUpdated(uint256 fee, uint256 newRewardsPerWeightPoint, bool isNewMoney)
+```
+
+### EmergencyPauseSet
+Emitted when emergency pause state changes
+```solidity
+event EmergencyPauseSet(bool paused)
 ```
 
 ## Development

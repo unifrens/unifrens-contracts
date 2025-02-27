@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UnichainFrens Mechanics Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@9.4.4/lib/browser/math.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 0 8px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .calculator {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .calculator input {
+            padding: 8px;
+            margin: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .info-box {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>UnichainFrens Mechanics Explorer</h1>
+
+    <div class="section">
+        <h2>Position Multiplier Decay</h2>
+        <div class="info-box">
+            <p>Earlier positions get higher multipliers following a quadratic decay: 1/position²</p>
+            <p>This means position #1 has 4× the base multiplier of position #2, 9× of position #3, etc.</p>
+        </div>
+        <div class="chart-container">
+            <canvas id="decayChart"></canvas>
+        </div>
+        <div class="controls">
+            <button onclick="updateScale('linear')">Linear Scale</button>
+            <button onclick="updateScale('logarithmic')">Log Scale</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Weight Increase Calculator</h2>
+        <div class="info-box">
+            <p>Weight increases follow a logarithmic curve: sqrt(pendingRewards / 0.001 ether) / 1e9</p>
+            <p>This makes it progressively harder to reach the maximum weight of 1000.</p>
+        </div>
+        <div class="calculator">
+            <div>
+                <label>Pending Rewards (ETH):</label>
+                <input type="number" id="pendingRewards" value="0.1" step="0.1" onchange="calculateWeightIncrease()">
+            </div>
+            <div>
+                <label>Current Weight:</label>
+                <input type="number" id="currentWeight" value="10" min="1" max="1000" onchange="calculateWeightIncrease()">
+            </div>
+            <div id="weightResult"></div>
+        </div>
+        <div class="chart-container">
+            <canvas id="weightIncreaseChart"></canvas>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Reward Distribution Simulator</h2>
+        <div class="info-box">
+            <p>Rewards are distributed proportionally to each position's effective power (weight × multiplier)</p>
+        </div>
+        <div class="calculator">
+            <div>
+                <label>New Rewards (ETH):</label>
+                <input type="number" id="newRewards" value="1" step="0.1" onchange="calculateRewardDistribution()">
+            </div>
+            <div id="distributionResult"></div>
+        </div>
+        <div class="chart-container">
+            <canvas id="distributionChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Position multiplier decay chart
+        function createDecayChart() {
+            const positions = Array.from({length: 10}, (_, i) => i + 1);
+            const multipliers = positions.map(x => 1 / (x * x));
+            
+            const ctx = document.getElementById('decayChart').getContext('2d');
+            window.decayChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: positions,
+                    datasets: [{
+                        label: 'Position Multiplier',
+                        data: multipliers,
+                        borderColor: '#007bff',
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Position Number'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Multiplier Value'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Position Multiplier Decay (1/position²)',
+                            font: { size: 16 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Weight increase calculation
+        function calculateWeightIncrease() {
+            const pendingRewards = parseFloat(document.getElementById('pendingRewards').value);
+            const currentWeight = parseInt(document.getElementById('currentWeight').value);
+            
+            // Convert ETH to wei and calculate increase
+            const weiAmount = pendingRewards * 1e18;
+            const baseIncrease = Math.sqrt(weiAmount / (0.001 * 1e18)) / 1e9;
+            const newWeight = Math.min(1000, currentWeight + Math.max(1, Math.floor(baseIncrease)));
+            
+            document.getElementById('weightResult').innerHTML = `
+                <p>Weight Increase: ${Math.floor(baseIncrease)}</p>
+                <p>New Weight: ${newWeight}</p>
+            `;
+        }
+
+        // Reward distribution calculation
+        function calculateRewardDistribution() {
+            const newRewards = parseFloat(document.getElementById('newRewards').value);
+            
+            // Example positions
+            const positions = [
+                { id: 1, weight: 10 },  // Position #1 with weight 10
+                { id: 2, weight: 50 },  // Position #2 with weight 50
+                { id: 3, weight: 100 }  // Position #3 with weight 100
+            ];
+            
+            // Calculate effective power for each position
+            positions.forEach(pos => {
+                pos.multiplier = 1 / (pos.id * pos.id);
+                pos.power = pos.weight * pos.multiplier;
+            });
+            
+            const totalPower = positions.reduce((sum, pos) => sum + pos.power, 0);
+            
+            // Calculate rewards
+            positions.forEach(pos => {
+                pos.rewards = (pos.power / totalPower) * newRewards;
+            });
+            
+            // Display results
+            document.getElementById('distributionResult').innerHTML = positions.map(pos => `
+                <p>Position #${pos.id} (Weight: ${pos.weight}, Multiplier: ${pos.multiplier.toFixed(3)}):
+                   ${pos.rewards.toFixed(4)} ETH</p>
+            `).join('');
+        }
+
+        function updateScale(scale) {
+            window.decayChart.options.scales.y.type = scale;
+            window.decayChart.update();
+        }
+
+        // Initialize everything
+        createDecayChart();
+        calculateWeightIncrease();
+        calculateRewardDistribution();
+    </script>
+</body>
+</html> 

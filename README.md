@@ -1,96 +1,113 @@
 # UnichainFrens Contracts
 
-This repository contains the smart contracts for the UnichainFrens project, a unique NFT staking and rewards system built on Ethereum.
+A dynamic NFT ecosystem where positions compete in an economic game of accumulation and strategy.
 
 ## Overview
 
-UnichainFrens is a dynamic NFT ecosystem where Unifrens compete in an economic game:
-- Users can mint positions with customizable names and weights
-- Positions accumulate rewards based on their weight and time staked
-- Earlier positions earn more through a square root decay formula
-- Players compete to be the last active position
+UnichainFrens is a unique NFT staking system where each position (Unifren) has:
+- A custom name (alphanumeric, 1-16 characters)
+- A weight (1-1000)
+- A position multiplier (1/position²)
+- Active/Retired status
 
-## Core Strategies
+## Core Mechanics
 
-1. **Stay & Play**
-   - Soft withdraw (25% of rewards)
-   - Redistribute 75% back to the pool
-   - Maintain position for future earnings
+### Position Power
+Each position's earning power is determined by two factors:
+1. **Weight** (1-1000)
+   - Initial mint: 1-100 weight
+   - Cost: 0.001 ETH per weight point
+   - Can increase through rewards
+   
+2. **Position Multiplier** (1/position²)
+   - Earlier positions get higher multipliers
+   - Position #1: 1.0× (100%)
+   - Position #2: 0.25× (25%)
+   - Position #3: 0.11× (11%)
+   - And so on...
 
-2. **Power-Up**
-   - Convert rewards to weight increase
-   - Maximum weight of 1000×
-   - No ETH withdrawal
+### Effective Power
+Total earning power = Weight × Position Multiplier
 
-3. **Cash Out**
-   - Hard withdraw (75% of rewards)
-   - Redistribute 25% back to pool
-   - Position becomes inactive (weight = 0)
+For example:
+- Position #1 with weight 10: 10 × 1.0 = 10 power
+- Position #2 with weight 50: 50 × 0.25 = 12.5 power
+- Position #3 with weight 100: 100 × 0.11 = 11 power
+
+### Reward Distribution
+New rewards (from mints) are distributed proportionally to each position's effective power.
+
+## Strategic Actions
+
+### 1. Soft Withdraw
+- Claim 25% of pending rewards as ETH
+- Redistribute 75% to all active positions
+- Increase weight by half of what redistribute would give
+- Position remains active
+- Minimum: 0.0001 ETH in rewards
+
+### 2. Redistribute
+- Keep 25% of rewards as future earning power
+- Redistribute 75% to all active positions
+- Maximum weight increase based on total rewards
+- No ETH withdrawal
+- Minimum: 0.00001 ETH in rewards
+
+### 3. Hard Withdraw
+- Claim 75% of pending rewards as ETH
+- Redistribute 25% to all active positions
+- Position becomes retired (weight = 0)
+- Cannot earn future rewards
+
+### 4. Burn
+- Transfer position to burn address
+- Set weight to 0 (retired)
+- Preserve position history and name
+- Cannot earn future rewards
+- Counts towards victory condition
+
+## Weight Increase Mechanics
+
+Weight increases follow a logarithmic curve:
+```solidity
+weightIncrease = sqrt(pendingRewards / 0.001 ether) / 1e9
+```
+
+This makes it progressively harder to reach max weight (1000).
 
 ## Victory Condition
 
-When only one active Fren remains (all others have weight 0), that player can claim victory and receive the entire contract balance as the ultimate winner of the game.
-
-## Contract Versions
-
-- `v1.sol` - Initial implementation
-- `v2.sol` - Enhanced version with improved mechanics
-- `v3.sol` - Gas optimizations and bug fixes
-- `v4.sol` - Changed to square root decay for more balanced distribution
-- `v5.sol` - Added victory mechanics and standardized error handling
-
-See [DEPLOYMENT_HISTORY.md](./DEPLOYMENT_HISTORY.md) for contract addresses and deployment details.
-
-## Key Features
-
-- Dynamic weight system (1-100 initial, up to 1000 max)
-- Square root decay distribution (1/√position)
-- Customizable position names
-- Multiple withdrawal strategies
-- Victory claim mechanic
-- Emergency pause functionality
-- Standardized error messages
-- Gas-optimized implementations
+When only one position remains with non-zero weight:
+1. That position can claim victory
+2. Winner receives entire contract balance
+3. Game concludes
 
 ## Events
 
-### PositionMinted
-Emitted when a new position is minted
+### Core Events
 ```solidity
 event PositionMinted(uint256 indexed tokenId, uint256 weight, string name, address owner)
-```
-
-### RewardsClaimed
-Emitted when rewards are claimed
-```solidity
 event RewardsClaimed(uint256 indexed tokenId, uint256 amount, uint8 withdrawalType)
-// withdrawalType: 0=soft, 1=hard, 2=redistribute, 3=victory
+event WeightUpdated(uint256 indexed tokenId, uint256 oldWeight, uint256 newWeight, uint8 reason)
+event PositionBurned(uint256 indexed tokenId)
+event VictoryClaimed(uint256 indexed tokenId, uint256 amount)
 ```
 
-### WeightUpdated
-Emitted when a position's weight changes
-```solidity
-event WeightUpdated(uint256 indexed tokenId, uint256 oldWeight, uint256 newWeight)
-```
+### Withdrawal Types
+- 0: Soft Withdraw
+- 1: Hard Withdraw
+- 2: Redistribute
 
-### GlobalRewardsUpdated
-Emitted when global rewards are updated
-```solidity
-event GlobalRewardsUpdated(uint256 fee, uint256 newRewardsPerWeightPoint, bool isNewMoney)
-```
-
-### EmergencyPauseSet
-Emitted when emergency pause state changes
-```solidity
-event EmergencyPauseSet(bool paused)
-```
+### Weight Update Reasons
+- 0: Soft Withdraw
+- 1: Redistribute
 
 ## Development
 
 ### Prerequisites
 - Node.js
-- Hardhat/Foundry
-- Ethereum wallet with testnet ETH
+- Hardhat
+- Ethereum wallet
 
 ### Setup
 1. Clone the repository
@@ -104,13 +121,6 @@ cd unifrens-contracts
 npm install
 ```
 
-3. Create `.env` file with required environment variables
-```
-PRIVATE_KEY=your_private_key
-ETHERSCAN_API_KEY=your_etherscan_key
-RPC_URL=your_rpc_url
-```
-
 ## License
 
-All rights reserved. Unauthorized copying or distribution of this project is strictly prohibited. 
+All rights reserved. Unauthorized copying or distribution prohibited. 

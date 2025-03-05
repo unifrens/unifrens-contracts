@@ -30,7 +30,6 @@ interface IUnifrensCore {
     function ownerOf(uint256 tokenId) external view returns (address);
     function unifrenNames(uint256 tokenId) external view returns (string memory);
     function _normalizedNameTaken(string memory name) external view returns (bool);
-    function setEmergencyName(uint256 tokenId, string memory newName) external;
     function overrideName(uint256 tokenId, string memory newName) external;
     function setBurnAddress(address addr) external;
     function isBurnAddress(address addr) external view returns (bool);

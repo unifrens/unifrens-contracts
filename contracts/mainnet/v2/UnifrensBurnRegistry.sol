@@ -32,6 +32,8 @@ interface IUnifrensCore {
     function _normalizedNameTaken(string memory name) external view returns (bool);
     function setEmergencyName(uint256 tokenId, string memory newName) external;
     function overrideName(uint256 tokenId, string memory newName) external;
+    function setBurnAddress(address addr) external;
+    function isBurnAddress(address addr) external view returns (bool);
 }
 
 contract UnifrensBurnRegistry is 
@@ -128,27 +130,13 @@ contract UnifrensBurnRegistry is
 
     /**
      * @dev Overrides a token's name
-     * Only works for tokens owned by burn addresses
-     * @param tokenId The ID of the token to rename
+     * @param tokenId The token ID to rename
      * @param newName The new name to set
      */
     function overrideName(uint256 tokenId, string memory newName) external onlyOwner {
-        IUnifrensCore coreContract = IUnifrensCore(core);
-        address owner = coreContract.ownerOf(tokenId);
-        
-        // Verify token is owned by a burn address
-        require(_burnAddresses[owner], "Token not owned by burn address");
-        
-        // Get current name
-        string memory oldName = coreContract.unifrenNames(tokenId);
-        
-        // Set new name in core contract
-        coreContract.overrideName(tokenId, newName);
-        
-        // Store override name change
-        _overrideNames[tokenId] = newName;
-        
-        emit NameOverridden(tokenId, oldName, newName);
+        require(IUnifrensCore(core).isBurnAddress(IUnifrensCore(core).ownerOf(tokenId)), "Token must be owned by burn address");
+        IUnifrensCore(core).overrideName(tokenId, newName);
+        emit NameOverridden(tokenId, IUnifrensCore(core).unifrenNames(tokenId), newName);
     }
 
     /**

@@ -19,37 +19,32 @@ graph TD
 ## Core Components
 
 ### UnifrensCore
-- Non-upgradeable base contract
-- Handles NFT functionality and name management
-- Manages weight storage and basic dust calculations
-- Interfaces with optional components
-- Handles minting, transfers, and basic operations
+- Base contract for NFT functionality and name management
+- Handles weight storage and basic dust calculations
+- Manages minting, transfers, and basic operations
+- Interfaces with other components
 
-### UnifrensDuster (Optional)
-- Upgradeable dust management contract
-- Handles all dust calculations and distributions
+### UnifrensDuster
+- Dust management contract
+- Handles dust calculations and distributions
 - Manages weight modification logic
-- Can be upgraded independently
 - Implements UUPS upgrade pattern
 
-### UnifrensMetadataResolver (Optional)
-- Upgradeable metadata management contract
+### UnifrensMetadataResolver
+- Metadata management contract
 - Handles custom metadata and image generation
-- Can be upgraded independently
 - Implements UUPS upgrade pattern
 
-### UnifrensFeeManager (Optional)
-- Upgradeable fee management contract
+### UnifrensFeeManager
+- Fee management contract
 - Handles additional fees on top of base minting fee
-- Can be upgraded independently
 - Implements UUPS upgrade pattern
 
-### UnifrensBurnRegistry (Optional)
-- Upgradeable burn address management contract
+### UnifrensBurnRegistry
+- Burn address management contract
 - Manages list of burn addresses
 - Handles dust redistribution for burned tokens
 - Provides name override functionality for burned tokens
-- Can be upgraded independently
 - Implements UUPS upgrade pattern
 
 ## Contract Interactions
@@ -110,8 +105,8 @@ sequenceDiagram
 
 ## Deployment Order
 
-1. Deploy `UnifrensCore` first (non-upgradeable)
-2. Deploy optional components in any order:
+1. Deploy `UnifrensCore`
+2. Deploy other components:
    - `UnifrensDuster`
    - `UnifrensMetadataResolver`
    - `UnifrensFeeManager`
@@ -125,7 +120,7 @@ sequenceDiagram
 - Requires new deployment for updates
 - State migration required
 
-### Optional Components
+### Other Components
 - Each can be upgraded independently
 - Uses OpenZeppelin UUPS pattern
 - State preserved through proxy
@@ -180,30 +175,6 @@ sequenceDiagram
 - MetadataResolver: Metadata updates
 - FeeManager: Fee updates
 - BurnRegistry: Burn address updates, name overrides
-
-## Development
-
-### Prerequisites
-- Node.js
-- Hardhat
-- OpenZeppelin Contracts
-
-### Setup
-1. Clone repository
-2. Install dependencies: `npm install`
-3. Configure environment variables
-4. Run tests: `npx hardhat test`
-
-### Testing
-- Unit tests for each contract
-- Integration tests for contract interactions
-- Upgrade tests for optional components
-
-### Deployment
-1. Deploy Core contract
-2. Deploy optional components
-3. Set component addresses in Core
-4. Verify contract interactions
 
 ## License
 

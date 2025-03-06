@@ -113,13 +113,48 @@ sequenceDiagram
 
 ## Deployment Order
 
+### Required Components
 1. Deploy `UnifrensCore`
-2. Deploy other components:
-   - `UnifrensDuster`
-   - `UnifrensMetadataResolver`
-   - `UnifrensFeeManager`
-   - `UnifrensBurnRegistry`
-3. Set component addresses in Core contract
+   - This is the only required contract for basic functionality
+   - Handles NFT minting, transfers, and basic dust mechanics
+   - Implements ERC721Enumerable standard
+   - Manages name uniqueness and weight system
+
+### Optional Upgrade Components
+These components can be deployed later to add additional functionality:
+
+1. `UnifrensDuster`
+   - Handles advanced dust calculations and distributions
+   - Requires `IUnifrensCore` interface
+   - Implements UUPS upgrade pattern
+
+2. `UnifrensMetadataResolver`
+   - Manages custom metadata and image generation
+   - No interface dependencies
+   - Implements UUPS upgrade pattern
+
+3. `UnifrensFeeManager`
+   - Handles additional fees on top of base minting fee
+   - No interface dependencies
+   - Implements UUPS upgrade pattern
+
+4. `UnifrensBurnRegistry`
+   - Manages burn addresses and name overrides
+   - No interface dependencies
+   - Implements UUPS upgrade pattern
+
+### Interface Deployment
+- `IUnifrensCore` and `IUnifrensDuster` are interface files
+- No deployment required - they are used for type safety and contract communication
+- Must be available during compilation
+- Can be updated without redeploying contracts
+
+### Component Setup
+After deploying optional components:
+1. Set component addresses in Core contract using admin functions
+2. Core contract will automatically use components if addresses are set
+3. Components can be added or removed at any time
+4. Core contract maintains full functionality even without optional components
 
 ## Upgrade Process
 

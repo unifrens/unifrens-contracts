@@ -111,28 +111,6 @@ sequenceDiagram
     Core->>BurnRegistry: confirm update
 ```
 
-## Development
-
-### Prerequisites
-- Solidity ^0.8.0
-- OpenZeppelin Contracts
-- Hardhat (for development)
-
-### Installation
-```bash
-npm install
-```
-
-### Testing
-```bash
-npx hardhat test
-```
-
-### Deployment
-```bash
-npx hardhat run scripts/deploy.js --network <network>
-```
-
 ## Deployment Order
 
 1. Deploy `UnifrensCore`

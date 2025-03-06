@@ -938,30 +938,28 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @dev Hook that is called before any token transfer. This includes minting.
      * Checks if the destination is a burn address and handles weight accordingly.
      */
-    function _beforeTokenTransfer(
-        address from,
+    function _update(
         address to,
-        uint256 firstTokenId,
-        uint256 batchSize
-    ) internal virtual override {
-        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+        uint256 tokenId,
+        address auth
+    ) internal virtual override(ERC721Enumerable) returns (address) {
+        // Call the parent contract's implementation first
+        address previousOwner = super._update(to, tokenId, auth);
 
         // Check if destination is a burn address
         if (burnRegistry != address(0) && IUnifrensBurnRegistry(burnRegistry).isBurnAddress(to)) {
-            // Handle each token in the batch
-            for (uint256 i = 0; i < batchSize; i++) {
-                uint256 tokenId = firstTokenId + i;
-                // Only update if token has weight
-                if (positionWeightPoints[tokenId] > 0) {
-                    totalWeightPoints -= positionWeightPoints[tokenId];
-                    positionWeightPoints[tokenId] = 0;
-                    positionWeights[tokenId] = 0;
-                    emit WeightUpdated(tokenId, positionWeights[tokenId], 0, 2); // 2 for burn
-                }
+            // Only update if token has weight
+            if (positionWeightPoints[tokenId] > 0) {
+                totalWeightPoints -= positionWeightPoints[tokenId];
+                positionWeightPoints[tokenId] = 0;
+                positionWeights[tokenId] = 0;
+                emit WeightUpdated(tokenId, positionWeights[tokenId], 0, 2); // 2 for burn
             }
             // Handle reward redistribution for the burn address
             IUnifrensBurnRegistry(burnRegistry).handleBurnAddressRewards(to);
         }
+
+        return previousOwner;
     }
 
     /**

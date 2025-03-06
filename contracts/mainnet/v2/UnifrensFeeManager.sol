@@ -18,6 +18,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
  * If not set, the core contract will not collect any additional fees.
  */
 interface IUnifrensFeeManager {
+    function feePercentage() external view returns (uint256);
     function handleMintFee(uint256 tokenId, uint256 weight, uint256 fee) external;
 }
 
@@ -87,9 +88,16 @@ contract UnifrensFeeManager is
 
     function handleMintFee(uint256 tokenId, uint256 weight, uint256 fee) external onlyCore {
         require(fee > 0, "No fee to handle");
-        emit FeesCollected(tokenId, fee);
+        
+        // Calculate fee based on weight
+        uint256 weightBasedFee = (fee * weight) / 100; // 1% per weight point
+        
+        emit FeesCollected(tokenId, weightBasedFee);
+        
         // Here you can implement custom fee distribution logic
         // For example, sending to a treasury, staking pool, etc.
+        // The weight parameter can be used to determine how to distribute the fee
+        // Higher weight positions might get different treatment
     }
 
     // ============ UUPS Upgradeable ============

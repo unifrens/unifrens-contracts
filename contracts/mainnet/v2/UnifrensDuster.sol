@@ -12,6 +12,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "./IUnifrensCore.sol";
 
 /**
  * @title UnifrensDuster
@@ -37,7 +38,7 @@ contract UnifrensDuster is
     // ============ State Variables ============
 
     /// @dev Reference to the core contract
-    address public core;
+    IUnifrensCore public core;
 
     /// @dev Total rewards distributed in the system
     uint256 public totalRewards;
@@ -68,7 +69,7 @@ contract UnifrensDuster is
     // ============ Modifiers ============
 
     modifier onlyCore() {
-        require(msg.sender == core, "Only core contract can call");
+        require(msg.sender == address(core), "Only core contract can call");
         _;
     }
 
@@ -81,7 +82,7 @@ contract UnifrensDuster is
 
     function initialize(address _core) public initializer {
         require(_core != address(0), "Invalid core address");
-        core = _core;
+        core = IUnifrensCore(_core);
         __Ownable_init(msg.sender);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
@@ -91,43 +92,27 @@ contract UnifrensDuster is
 
     function setCore(address _core) external onlyOwner {
         require(_core != address(0), "Invalid core address");
-        address oldCore = core;
-        core = _core;
-        emit CoreUpdated(oldCore, _core);
+        IUnifrensCore oldCore = core;
+        core = IUnifrensCore(_core);
+        emit CoreUpdated(address(oldCore), _core);
     }
 
     // ============ Rewards Functions ============
 
-    function updateGlobalRewards(uint256 fee, bool isNewMoney) external onlyCore {
-        if (totalWeightPoints > 0) {
-            uint256 adjustedTotalWeightPoints = totalWeightPoints;
-            if (adjustedTotalWeightPoints == 0) return;
-            
-            // Calculate rewards per weight point with better precision
-            uint256 increase = (fee / adjustedTotalWeightPoints) * 1e18;
-            
-            // Add remainder to maintain precision
-            uint256 remainder = (fee % adjustedTotalWeightPoints) * 1e18 / adjustedTotalWeightPoints;
-            increase += remainder;
-            
-            // Handle potential overflow
-            uint256 maxPossibleIncrease = type(uint256).max - rewardsPerWeightPoint;
-            if (increase > maxPossibleIncrease) {
-                increase = maxPossibleIncrease;
-            }
-            
-            rewardsPerWeightPoint += increase;
-        }
-        
+    function updateGlobalRewards(uint256 fee, bool isNewMoney) external override {
+        require(msg.sender == address(core), "Only core can update rewards");
         if (isNewMoney) {
             totalRewards += fee;
+        }
+        if (totalWeightPoints > 0) {
+            rewardsPerWeightPoint += fee / totalWeightPoints;
         }
     }
 
     function getPendingRewards(uint256 tokenId) external view returns (uint256) {
         // This will be called by the core contract
         // Core contract will check if token exists and has weight points
-        uint256 rewardsAccrued = IUnifrensCore(core).getPositionWeightPoints(tokenId) * 
+        uint256 rewardsAccrued = IUnifrensCore(address(core)).getPositionWeightPoints(tokenId) * 
             (rewardsPerWeightPoint - lastRewardsPerWeightPoint[tokenId]);
         
         rewardsAccrued = rewardsAccrued / 1e18;
@@ -143,25 +128,25 @@ contract UnifrensDuster is
 
     function redistribute(uint256 tokenId) external onlyCore nonReentrant returns (uint256) {
         uint256 pendingRewards = this.getPendingRewards(tokenId);
-        require(pendingRewards >= IUnifrensCore(core).MIN_REDISTRIBUTE(), "Insufficient dust to redistribute");
+        require(pendingRewards >= IUnifrensCore(address(core)).MIN_REDISTRIBUTE(), "Insufficient dust to redistribute");
 
         uint256 redistributeAmount = (pendingRewards * 75) / 100;
         uint256 keptAmount = pendingRewards - redistributeAmount;
         
-        uint256 weightIncrease = calculateWeightIncrease(pendingRewards, IUnifrensCore(core).getPositionWeight(tokenId));
+        uint256 weightIncrease = calculateWeightIncrease(pendingRewards, IUnifrensCore(address(core)).getPositionWeight(tokenId));
         if (weightIncrease == 0) weightIncrease = 1;
         
-        uint256 oldWeight = IUnifrensCore(core).getPositionWeight(tokenId);
+        uint256 oldWeight = IUnifrensCore(address(core)).getPositionWeight(tokenId);
         uint256 newWeight = oldWeight + weightIncrease;
-        if (newWeight > IUnifrensCore(core).MAX_WEIGHT()) {
-            newWeight = IUnifrensCore(core).MAX_WEIGHT();
+        if (newWeight > IUnifrensCore(address(core)).MAX_WEIGHT()) {
+            newWeight = IUnifrensCore(address(core)).MAX_WEIGHT();
         }
 
-        uint256 oldWeightPoints = IUnifrensCore(core).getPositionWeightPoints(tokenId);
+        uint256 oldWeightPoints = IUnifrensCore(address(core)).getPositionWeightPoints(tokenId);
         uint256 newWeightPoints = (1e18 / (tokenId**2)) * newWeight;
         
         // Update position state through core contract
-        IUnifrensCore(core).updatePositionWeight(tokenId, newWeight, newWeightPoints);
+        IUnifrensCore(address(core)).updatePositionWeight(tokenId, newWeight, newWeightPoints);
         
         // Temporarily reduce total weight points
         totalWeightPoints -= oldWeightPoints;
@@ -170,7 +155,7 @@ contract UnifrensDuster is
         lastRewardsPerWeightPoint[tokenId] = rewardsPerWeightPoint;
         
         // Redistribute 75% back to the reward pool
-        if (redistributeAmount > 0 && IUnifrensCore(core).totalSupply() > 1) {
+        if (redistributeAmount > 0 && IUnifrensCore(address(core)).totalSupply() > 1) {
             updateGlobalRewards(redistributeAmount, false);
         }
         
@@ -191,34 +176,34 @@ contract UnifrensDuster is
 
     function softWithdraw(uint256 tokenId) external onlyCore nonReentrant returns (uint256) {
         uint256 pendingRewards = this.getPendingRewards(tokenId);
-        require(pendingRewards >= IUnifrensCore(core).MIN_SOFT_WITHDRAW(), "Position not matured");
+        require(pendingRewards >= IUnifrensCore(address(core)).MIN_SOFT_WITHDRAW(), "Position not matured");
 
         uint256 softWithdrawAmount = (pendingRewards * 25) / 100;
         uint256 redistributeAmount = pendingRewards - softWithdrawAmount;
 
         require(address(core).balance >= softWithdrawAmount, "Insufficient contract balance");
 
-        uint256 oldWeight = IUnifrensCore(core).getPositionWeight(tokenId);
+        uint256 oldWeight = IUnifrensCore(address(core)).getPositionWeight(tokenId);
         uint256 newWeight = oldWeight;
 
-        if (oldWeight < IUnifrensCore(core).MAX_WEIGHT()) {
+        if (oldWeight < IUnifrensCore(address(core)).MAX_WEIGHT()) {
             uint256 weightIncrease = calculateWeightIncrease(pendingRewards, oldWeight) / 2;
             if (weightIncrease == 0) weightIncrease = 1;
             
             newWeight = oldWeight + weightIncrease;
-            if (newWeight > IUnifrensCore(core).MAX_WEIGHT()) {
-                newWeight = IUnifrensCore(core).MAX_WEIGHT();
+            if (newWeight > IUnifrensCore(address(core)).MAX_WEIGHT()) {
+                newWeight = IUnifrensCore(address(core)).MAX_WEIGHT();
             }
 
-            uint256 oldWeightPoints = IUnifrensCore(core).getPositionWeightPoints(tokenId);
+            uint256 oldWeightPoints = IUnifrensCore(address(core)).getPositionWeightPoints(tokenId);
             uint256 newWeightPoints = (1e18 / (tokenId**2)) * newWeight;
             
-            IUnifrensCore(core).updatePositionWeight(tokenId, newWeight, newWeightPoints);
+            IUnifrensCore(address(core)).updatePositionWeight(tokenId, newWeight, newWeightPoints);
             
             totalWeightPoints -= oldWeightPoints;
             lastRewardsPerWeightPoint[tokenId] = rewardsPerWeightPoint;
             
-            if (redistributeAmount > 0 && IUnifrensCore(core).totalSupply() > 1) {
+            if (redistributeAmount > 0 && IUnifrensCore(address(core)).totalSupply() > 1) {
                 updateGlobalRewards(redistributeAmount, false);
             }
             
@@ -230,7 +215,7 @@ contract UnifrensDuster is
         claimedRewards[tokenId] += softWithdrawAmount;
         emit RewardsClaimed(tokenId, softWithdrawAmount, 0);
         
-        payable(IUnifrensCore(core).ownerOf(tokenId)).transfer(softWithdrawAmount);
+        payable(IUnifrensCore(address(core)).ownerOf(tokenId)).transfer(softWithdrawAmount);
         return newWeight;
     }
 
@@ -243,30 +228,30 @@ contract UnifrensDuster is
 
         require(address(core).balance >= hardWithdrawAmount, "Insufficient contract balance");
 
-        uint256 oldWeightPoints = IUnifrensCore(core).getPositionWeightPoints(tokenId);
+        uint256 oldWeightPoints = IUnifrensCore(address(core)).getPositionWeightPoints(tokenId);
         totalWeightPoints -= oldWeightPoints;
         
-        IUnifrensCore(core).updatePositionWeight(tokenId, 0, 0);
+        IUnifrensCore(address(core)).updatePositionWeight(tokenId, 0, 0);
         
         claimedRewards[tokenId] += pendingRewards;
         lastRewardsPerWeightPoint[tokenId] = rewardsPerWeightPoint;
         
-        if (redistributeAmount > 0 && IUnifrensCore(core).totalSupply() > 1) {
+        if (redistributeAmount > 0 && IUnifrensCore(address(core)).totalSupply() > 1) {
             updateGlobalRewards(redistributeAmount, false);
         }
         
         emit RewardsClaimed(tokenId, hardWithdrawAmount, 1);
-        payable(IUnifrensCore(core).ownerOf(tokenId)).transfer(hardWithdrawAmount);
+        payable(IUnifrensCore(address(core)).ownerOf(tokenId)).transfer(hardWithdrawAmount);
     }
 
     function getContractHealth() external view returns (uint256, uint256) {
         uint256 totalRewardsDistributed = totalRewards;
         uint256 pendingRewards = 0;
-        uint256 supply = IUnifrensCore(core).totalSupply();
+        uint256 supply = IUnifrensCore(address(core)).totalSupply();
         uint256 contractBalance = address(core).balance;
         
         for (uint256 i = 1; i <= supply; i++) {
-            if (IUnifrensCore(core).getPositionWeightPoints(i) > 0) {
+            if (IUnifrensCore(address(core)).getPositionWeightPoints(i) > 0) {
                 uint256 positionRewards = this.getPendingRewards(i);
                 if (pendingRewards + positionRewards > contractBalance) {
                     pendingRewards = contractBalance;
@@ -282,7 +267,7 @@ contract UnifrensDuster is
     // ============ Helper Functions ============
 
     function calculateWeightIncrease(uint256 pendingRewards, uint256 currentWeight) public pure returns (uint256) {
-        uint256 ratio = (pendingRewards * 1e18) / IUnifrensCore(core).BASE_WEIGHT_INCREASE();
+        uint256 ratio = (pendingRewards * 1e18) / IUnifrensCore(address(core)).BASE_WEIGHT_INCREASE();
         uint256 increase = sqrt(ratio) / 1e9;
 
         if (pendingRewards > 0 && increase == 0) {
@@ -311,17 +296,4 @@ contract UnifrensDuster is
     // ============ UUPS Upgradeable ============
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
-}
-
-// Interface for core contract functions we need to call
-interface IUnifrensCore {
-    function MIN_REDISTRIBUTE() external view returns (uint256);
-    function MIN_SOFT_WITHDRAW() external view returns (uint256);
-    function MAX_WEIGHT() external view returns (uint256);
-    function BASE_WEIGHT_INCREASE() external view returns (uint256);
-    function getPositionWeight(uint256 tokenId) external view returns (uint256);
-    function getPositionWeightPoints(uint256 tokenId) external view returns (uint256);
-    function updatePositionWeight(uint256 tokenId, uint256 newWeight, uint256 newWeightPoints) external;
-    function totalSupply() external view returns (uint256);
-    function ownerOf(uint256 tokenId) external view returns (address);
 } 

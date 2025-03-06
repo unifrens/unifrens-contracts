@@ -14,6 +14,8 @@ graph TD
     C --> A
     D --> A
     E --> A
+    A --> F[IUnifrensDuster]
+    B --> G[IUnifrensCore]
 ```
 
 ## Core Components
@@ -22,13 +24,15 @@ graph TD
 - Base contract for NFT functionality and name management
 - Handles weight storage and basic dust calculations
 - Manages minting, transfers, and basic operations
-- Interfaces with other components
+- Interfaces with other components through interfaces
+- Implements ERC721Enumerable standard
 
 ### UnifrensDuster
 - Dust management contract
 - Handles dust calculations and distributions
 - Manages weight modification logic
 - Implements UUPS upgrade pattern
+- Interfaces with Core through IUnifrensCore
 
 ### UnifrensMetadataResolver
 - Metadata management contract
@@ -46,6 +50,10 @@ graph TD
 - Handles dust redistribution for burned tokens
 - Provides name override functionality for burned tokens
 - Implements UUPS upgrade pattern
+
+### Interface Files
+- `IUnifrensCore`: Defines the interface for Core contract functions
+- `IUnifrensDuster`: Defines the interface for Duster contract functions
 
 ## Contract Interactions
 
@@ -101,6 +109,28 @@ sequenceDiagram
     BurnRegistry->>Core: verify burn address ownership
     Core->>Core: update name
     Core->>BurnRegistry: confirm update
+```
+
+## Development
+
+### Prerequisites
+- Solidity ^0.8.0
+- OpenZeppelin Contracts
+- Hardhat (for development)
+
+### Installation
+```bash
+npm install
+```
+
+### Testing
+```bash
+npx hardhat test
+```
+
+### Deployment
+```bash
+npx hardhat run scripts/deploy.js --network <network>
 ```
 
 ## Deployment Order

@@ -15,9 +15,9 @@ import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./UnifrensMetadataResolver.sol";
-import "./UnifrensDuster.sol";
 import "./UnifrensFeeManager.sol";
 import "./UnifrensBurnRegistry.sol";
+import "./IUnifrensDuster.sol";
 
 /**
  * @title Unifrens
@@ -34,13 +34,13 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
     /// @dev Address of the resolver contract
     address public resolver;
 
-    /// @dev Address of the duster contract (optional)
-    address public duster;
+    /// @dev Address of the duster contract
+    IUnifrensDuster public duster;
 
-    /// @dev Address of the fee manager contract (optional)
+    /// @dev Address of the fee manager contract
     address public feeManager;
 
-    /// @dev Address of the burn registry contract (optional)
+    /// @dev Address of the burn registry contract
     address public burnRegistry;
 
     /// @dev Base cost to mint a new position (will be multiplied by weight)
@@ -133,7 +133,7 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
     // ============ Modifiers ============
 
     modifier onlyDuster() {
-        require(msg.sender == duster, "Only duster contract can call");
+        require(msg.sender == address(duster), "Only duster contract can call");
         _;
     }
 
@@ -194,8 +194,8 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
      */
     function setDuster(address _duster) external onlyOwner {
         require(_duster != address(0), "Invalid duster address");
-        address oldDuster = duster;
-        duster = _duster;
+        address oldDuster = address(duster);
+        duster = IUnifrensDuster(_duster);
         emit DusterUpdated(oldDuster, _duster);
     }
 
@@ -341,7 +341,7 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
      * @param isNewMoney Whether this is new money (true) or redistribution (false)
      */
     function updateGlobalRewards(uint256 fee, bool isNewMoney) private {
-        if (duster != address(0)) {
+        if (address(duster) != address(0)) {
             IUnifrensDuster(duster).updateGlobalRewards(fee, isNewMoney);
         } else {
             if (totalWeightPoints > 0) {
@@ -375,7 +375,7 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
         if (!_exists(tokenId) || ownerOf(tokenId) == address(0)) return 0;
         if (positionWeightPoints[tokenId] == 0) return 0;
         
-        if (duster != address(0)) {
+        if (address(duster) != address(0)) {
             return IUnifrensDuster(duster).getPendingRewards(tokenId);
         }
         
@@ -404,7 +404,7 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
         require(ownerOf(tokenId) == msg.sender, "Not the owner");
         require(positionWeights[tokenId] < MAX_WEIGHT, "Max weight reached");
         
-        if (duster != address(0)) {
+        if (address(duster) != address(0)) {
             return IUnifrensDuster(duster).redistribute(tokenId);
         }
         
@@ -511,7 +511,7 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
     function softWithdraw(uint256 tokenId) external nonReentrant returns (uint256 newWeight) {
         require(ownerOf(tokenId) == msg.sender, "Not the owner");
         
-        if (duster != address(0)) {
+        if (address(duster) != address(0)) {
             return IUnifrensDuster(duster).softWithdraw(tokenId);
         }
         
@@ -569,7 +569,7 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
     function hardWithdraw(uint256 tokenId) external nonReentrant {
         require(ownerOf(tokenId) == msg.sender, "Not the owner");
         
-        if (duster != address(0)) {
+        if (address(duster) != address(0)) {
             IUnifrensDuster(duster).hardWithdraw(tokenId);
             return;
         }
@@ -732,7 +732,7 @@ contract Unifrens is ERC721Enumerable, Ownable, ReentrancyGuard {
         uint256 totalRewardsDistributed,
         uint256 pendingRewards
     ) {
-        if (duster != address(0)) {
+        if (address(duster) != address(0)) {
             return IUnifrensDuster(duster).getContractHealth();
         }
         

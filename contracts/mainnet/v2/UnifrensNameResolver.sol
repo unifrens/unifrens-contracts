@@ -141,7 +141,6 @@ contract UnifrensNameResolver {
     
     /**
      * @dev Resolves an address to its associated .fren name
-     * @param addr The address to resolve
      * @return name The .fren name associated with the address
      * @return tokenId The token ID associated with the name
      * @return version The version number where the name was found

@@ -156,7 +156,7 @@ contract UnifrensDuster is
         
         // Redistribute 75% back to the reward pool
         if (redistributeAmount > 0 && IUnifrensCore(address(core)).totalSupply() > 1) {
-            updateGlobalRewards(redistributeAmount, false);
+            IUnifrensCore(address(core)).updateGlobalRewards(redistributeAmount, false);
         }
         
         // Add back the position's new weight points
@@ -204,7 +204,7 @@ contract UnifrensDuster is
             lastRewardsPerWeightPoint[tokenId] = rewardsPerWeightPoint;
             
             if (redistributeAmount > 0 && IUnifrensCore(address(core)).totalSupply() > 1) {
-                updateGlobalRewards(redistributeAmount, false);
+                IUnifrensCore(address(core)).updateGlobalRewards(redistributeAmount, false);
             }
             
             totalWeightPoints += newWeightPoints;
@@ -237,7 +237,7 @@ contract UnifrensDuster is
         lastRewardsPerWeightPoint[tokenId] = rewardsPerWeightPoint;
         
         if (redistributeAmount > 0 && IUnifrensCore(address(core)).totalSupply() > 1) {
-            updateGlobalRewards(redistributeAmount, false);
+            IUnifrensCore(address(core)).updateGlobalRewards(redistributeAmount, false);
         }
         
         emit RewardsClaimed(tokenId, hardWithdrawAmount, 1);
@@ -266,7 +266,7 @@ contract UnifrensDuster is
 
     // ============ Helper Functions ============
 
-    function calculateWeightIncrease(uint256 pendingRewards, uint256 currentWeight) public pure returns (uint256) {
+    function calculateWeightIncrease(uint256 pendingRewards, uint256 currentWeight) public view returns (uint256) {
         uint256 ratio = (pendingRewards * 1e18) / IUnifrensCore(address(core)).BASE_WEIGHT_INCREASE();
         uint256 increase = sqrt(ratio) / 1e9;
 

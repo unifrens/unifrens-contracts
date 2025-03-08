@@ -16,4 +16,8 @@ node_modules/
 # Contracts
 /contracts/testnet
 /contracts/mainnet/v2
-/contracts/mainnet/v1 
+/contracts/mainnet/v1
+
+# Deployment
+/deployment-history
+/deployment-history/* 

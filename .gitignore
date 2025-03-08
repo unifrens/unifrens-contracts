@@ -19,5 +19,8 @@ node_modules/
 /contracts/mainnet/v1
 
 # Deployment
+DEPLOYMENT_HISTORY.md
+
+# Deployment history
 /deployment-history
 /deployment-history/* 

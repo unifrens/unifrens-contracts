@@ -1,2 +1,19 @@
+# OS files
 .DS_Store
-**/.DS_Store 
+
+# Testing directory (contains sensitive information)
+/testing/
+/testing/*
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+
+**/.DS_Store
+
+# Contracts
+/contracts/testnet
+/contracts/mainnet/v2
+/contracts/mainnet/v1 
